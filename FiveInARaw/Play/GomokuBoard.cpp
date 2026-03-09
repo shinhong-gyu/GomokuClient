@@ -1,10 +1,16 @@
 #include "GomokuBoard.h"
 #include <iostream>
 
+#include "Player.h"
 
 using namespace std;
 
 GomokuBoard::GomokuBoard()
+{
+	InitGameBoard();
+}
+
+void GomokuBoard::InitGameBoard()
 {
 	for (int y = 0; y < BOARD_SIZE; y++)
 	{
@@ -78,9 +84,9 @@ void GomokuBoard::DrawBoard()
 	}
 }
 
-bool GomokuBoard::PutStone(int x, int y, int player)
+bool GomokuBoard::PutStone(int x, int y, int color)
 {
-	if (board[y][x/2] != 0)
+	if (board[y][x / 2] != 0)
 	{
 		return false;
 	}
@@ -95,7 +101,7 @@ bool GomokuBoard::PutStone(int x, int y, int player)
 		return false;
 	}
 
-	board[y][x / 2] = player;
+	board[y][x / 2] = color;
 
 	return true;
 }
@@ -105,25 +111,25 @@ bool GomokuBoard::CheckWin(int x, int y, int player)
 	int dx[] = { 1, 0, 1, 1 };
 	int dy[] = { 0, 1, 1, -1 };
 
-	for (int i = 0; i < 4; i++) 
+	for (int i = 0; i < 4; i++)
 	{
 		int count = 1;
 
-		for (int dir = -1; dir <= 1; dir += 2) 
+		for (int dir = -1; dir <= 1; dir += 2)
 		{
 			int nx = x;
 			int ny = y;
 
-			while (true) 
+			while (true)
 			{
 				nx += (dx[i] * dir);
 				ny += (dy[i] * dir);
 
-				if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE) 
+				if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE)
 				{
 					break;
 				}
-				if (board[ny][nx] != player) 
+				if (board[ny][nx] != player)
 				{
 					break;
 				}
@@ -132,7 +138,7 @@ bool GomokuBoard::CheckWin(int x, int y, int player)
 			}
 		}
 
-		if (count >= 5) 
+		if (count >= 5)
 		{
 			return true;
 		}

@@ -1,9 +1,7 @@
 #pragma once
 #include "../UI/ConsoleUI.h"
 #include "../Play/GomokuBoard.h"
-
-
-
+#include "../Play/Player.h"
 
 struct KeyState
 {
@@ -45,4 +43,6 @@ private:
 	GomokuBoard Board;
 
 	int turn = 1;
+
+	Player player;
 };

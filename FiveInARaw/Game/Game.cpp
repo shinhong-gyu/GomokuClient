@@ -5,7 +5,34 @@
 
 Game::Game()
 {
-	Board.DrawBoard();
+	if (player.ConnetToServer("127.0.0.1", 9000))
+	{
+		std::cout << "[클라이언트] 서버 연결 성공";
+
+		Sleep(3000);
+		system("cls");
+
+		if (player.TryLogin())
+		{
+			system("cls");
+
+			GamePacket packet;
+
+			player.WaitingGame();
+
+			Sleep(3000);
+
+			Board.DrawBoard();
+		}
+		else
+		{
+			system("pause");
+		}
+	}
+	else
+	{
+		std::cout << "[클라이언트] 서버 연결 실패" << "\n";
+	}
 }
 
 Game::~Game()
@@ -32,36 +59,79 @@ void Game::Run()
 			break;
 		}
 
-		QueryPerformanceCounter(&time);
-		currentTime = time.QuadPart;
-
-		float deltaTime = static_cast<float>(currentTime - previousTime) / static_cast<float>(frequency.QuadPart);
-
-		if (deltaTime >= targetOneFrameTime)
+		if (player.bIsMyTurn)
 		{
-			if (ProcessInput())
+			QueryPerformanceCounter(&time);
+			currentTime = time.QuadPart;
+
+			float deltaTime = static_cast<float>(currentTime - previousTime) / static_cast<float>(frequency.QuadPart);
+
+			if (deltaTime >= targetOneFrameTime)
 			{
-				if (Board.PutStone(mousePosition.x, mousePosition.y, turn))
+				if (ProcessInput())
 				{
-					system("cls");
-
-					Board.DrawBoard();
-
-					if (Board.CheckWin(mousePosition.x/2, mousePosition.y, turn))
+					if (Board.PutStone(mousePosition.x, mousePosition.y, player.color))
 					{
 						system("cls");
-						std::cout << "Player" << turn << " win" << std::endl;
-						quit = true;
+
+						Board.DrawBoard();
+
+						GamePacket packet = {};
+
+						if (Board.CheckWin(mousePosition.x / 2, mousePosition.y, player.color))
+						{
+							system("cls");
+							std::cout << "You win" << std::endl;
+
+							packet.type = PacketType::WIN;
+
+							packet.x = mousePosition.x / 2;
+							packet.y = mousePosition.y;
+
+							strncpy(packet.id, player.id.c_str(), sizeof(packet.id) - 1);
+							packet.id[sizeof(packet.id) - 1] = '\0';
+							strncpy(packet.pw, player.pw.c_str(), sizeof(packet.pw) - 1);
+							packet.pw[sizeof(packet.pw) - 1] = '\0';
+
+							player.SendPacket(packet);
+						}
+						else
+						{
+							packet.type = PacketType::STONE;
+
+							packet.x = mousePosition.x / 2;
+							packet.y = mousePosition.y;
+
+							strncpy(packet.id, player.id.c_str(), sizeof(packet.id) - 1);
+							packet.id[sizeof(packet.id) - 1] = '\0';
+							strncpy(packet.pw, player.pw.c_str(), sizeof(packet.pw) - 1);
+							packet.pw[sizeof(packet.pw) - 1] = '\0';
+
+							player.SendPacket(packet);
+
+							player.bIsMyTurn = false;
+						}
 					}
 					else
 					{
-						turn = turn == 1 ? 2 : 1;
+						// 둘 수 없는 곳일 때 처리
 					}
 				}
-				else
-				{
-					// 둘 수 없는 곳일 때 처리
-				}
+			}
+		}
+		else
+		{
+			GamePacket packet;
+
+			player.RecvPacket(packet);
+
+			if (packet.type == PacketType::STONE)
+			{
+				UI.Gotoxy(0, 0);
+
+				Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
+
+				Board.DrawBoard();
 			}
 		}
 	}

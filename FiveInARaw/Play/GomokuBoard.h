@@ -10,6 +10,8 @@ class GomokuBoard
 public:
 	GomokuBoard();
 
+	void InitGameBoard();
+
 	void DrawBoard();
 
 	bool PutStone(int x, int y, int player);
