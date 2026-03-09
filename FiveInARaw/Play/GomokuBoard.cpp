@@ -10,7 +10,7 @@ GomokuBoard::GomokuBoard()
 	{
 		for (int x = 0; x < BOARD_SIZE; x++)
 		{
-			Board[y][x] = EMPTY;
+			board[y][x] = EMPTY;
 		}
 	}
 }
@@ -21,15 +21,21 @@ void GomokuBoard::DrawBoard()
 	{
 		for (int x = 0; x < BOARD_SIZE; x++)
 		{
-			if (Board[y][x] == BLACK)
+			if (board[y][x] == BLACK)
 			{
 				cout << "¡Ü";
 			}
-			else if (Board[y][x] == WHITE)
+			else if (board[y][x] == WHITE)
 			{
 				cout << "¡Û";
 			}
-			else {
+			else
+			{
+				if ((y == 3 || y == 9 || y == 15) && (x == 3 || x == 9 || x == 15))
+				{
+					cout << "¦¶¦¡";
+					continue;
+				}
 				if (y == 0 && x == 0)
 				{
 					cout << "¦£¦¡";
@@ -72,7 +78,65 @@ void GomokuBoard::DrawBoard()
 	}
 }
 
-bool GomokuBoard::PutStone(int X, int Y, int Player)
+bool GomokuBoard::PutStone(int x, int y, int player)
 {
+	if (board[y][x/2] != 0)
+	{
+		return false;
+	}
+
+	if (x >= BOARD_SIZE * 2 || x <= 0)
+	{
+		return false;
+	}
+
+	if (y >= BOARD_SIZE || y < 0)
+	{
+		return false;
+	}
+
+	board[y][x / 2] = player;
+
+	return true;
+}
+
+bool GomokuBoard::CheckWin(int x, int y, int player)
+{
+	int dx[] = { 1, 0, 1, 1 };
+	int dy[] = { 0, 1, 1, -1 };
+
+	for (int i = 0; i < 4; i++) 
+	{
+		int count = 1;
+
+		for (int dir = -1; dir <= 1; dir += 2) 
+		{
+			int nx = x;
+			int ny = y;
+
+			while (true) 
+			{
+				nx += (dx[i] * dir);
+				ny += (dy[i] * dir);
+
+				if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE) 
+				{
+					break;
+				}
+				if (board[ny][nx] != player) 
+				{
+					break;
+				}
+
+				count++;
+			}
+		}
+
+		if (count >= 5) 
+		{
+			return true;
+		}
+	}
+
 	return false;
 }

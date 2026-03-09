@@ -1,0 +1,48 @@
+#pragma once
+#include "../UI/ConsoleUI.h"
+#include "../Play/GomokuBoard.h"
+
+
+
+
+struct KeyState
+{
+	bool isKeyDown = false;
+
+	bool wasKeyDowm = false;
+};
+
+struct Vector2
+{
+	int x = 0;
+	int y = 0;
+};
+
+class Game
+{
+public:
+	Game();
+	~Game();
+
+	void Run();
+
+	bool ProcessInput();
+private:
+	float targetFrameRate = 60.0f;
+
+	float targetOneFrameTime = 0.0f;
+
+	bool quit = false;
+
+	bool bHasChange = false;
+
+	KeyState keyState[255];
+
+	Vector2 mousePosition;
+
+	ConsoleUI UI;
+
+	GomokuBoard Board;
+
+	int turn = 1;
+};

@@ -12,8 +12,10 @@ public:
 
 	void DrawBoard();
 
-	bool PutStone(int X, int Y, int Player);
+	bool PutStone(int x, int y, int player);
+
+	bool CheckWin(int x, int y, int player);
 
 private:
-	int Board[BOARD_SIZE][BOARD_SIZE];
+	int board[BOARD_SIZE][BOARD_SIZE];
 };

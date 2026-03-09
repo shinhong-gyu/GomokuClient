@@ -1,19 +1,12 @@
 #include <iostream>
 
-#include "UI/ConsoleUI.h"
-#include "Play/GomokuBoard.h"
+#include "Game/Game.h"
 
 using namespace std;
 
 int main()
 {
-	ConsoleUI UI;
+	Game game;
 
-	GomokuBoard Board;
-
-	while (1)
-	{
-		Board.DrawBoard();
-	}
-	
+	game.Run();
 }

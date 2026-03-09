@@ -15,6 +15,6 @@ public:
 
 	void Gotoxy(int x, int y);
 private:
-	HANDLE HIn;
-	HANDLE HOut;
+	HANDLE hIn;
+	HANDLE hOut;
 };
