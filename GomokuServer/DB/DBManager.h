@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mysql.h>
-#include <string.h>
+#include <string>
 #include <iostream>
 
 class DBManager
@@ -15,6 +15,8 @@ public:
 	bool Login(const std::string& id, const std::string& pw);
 
 	bool UpdateRecord(const std::string& id, bool isWin);
+
+	bool GetRecord(const std::string& id, int& win, int& lose);
 private:
 	MYSQL* conn;
 };

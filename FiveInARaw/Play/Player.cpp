@@ -3,15 +3,24 @@
 #include <iostream>
 #include <cstring>
 
+#include <thread>
+
 Player::Player()
 {
-
+	color = 1;
+	sock = INVALID_SOCKET;
 }
 
 bool Player::ConnetToServer(const char* ip, int port)
 {
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	std::cout << result << "\n";
+	if (result)
+	{
+		std::cout << "[클라이언트] WSAStartup 실패: " << result << "\n";
+		return false;
+	}
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -36,15 +45,22 @@ void Player::SendPacket(GamePacket packet)
 void Player::RecvPacket(GamePacket& packet)
 {
 	recv(sock, (char*)&packet, sizeof(GamePacket), 0);
-}
+}	
+
 
 void Player::WaitingGame()
 {
+	GameInfo infoPacket = {};
+
 	std::cout << "[클라이언트] 상대 찾는중 ..." << "\n";
 
-	recv(sock, (char*)&color, sizeof(int), 0);
+	recv(sock, (char*)&infoPacket, sizeof(GameInfo), 0);
 
-	bIsMyTurn = (color == 1);
+	system("cls");
+
+	color = infoPacket.color;
+
+	bIsMyTurn = (infoPacket.color == 1);
 
 	if (bIsMyTurn)
 	{
@@ -54,6 +70,13 @@ void Player::WaitingGame()
 	{
 		std::cout << "[클라이언트] 백돌(후공)" << "\n";
 	}
+
+	std::cout << "[클라이언트] 상대 ID : " << std::string(infoPacket.oppID) << "\n";
+	std::cout << "[클라이언트] 상대 전적 : " << infoPacket.win << "승 " << infoPacket.lose << "패" << "\n";
+
+	Sleep(3000);
+
+	system("cls");
 }
 
 bool Player::TryLogin()
@@ -63,6 +86,7 @@ bool Player::TryLogin()
 
 	std::cout << "[로그인] PW : ";
 	std::cin >> pw;
+
 
 	GamePacket loginPacket = {};
 
@@ -76,18 +100,39 @@ bool Player::TryLogin()
 	SendPacket(loginPacket);
 
 	GamePacket response = {};
+
+	std::cout << "[로그인] 로그인 시도 중... " << "\n";
+
 	RecvPacket(response);
 
 	if (response.type == LOGIN && response.x == 1)
 	{
 		std::cout << "[클라이언트] 로그인 성공!" << std::endl;
+
 		Sleep(1000);
 		return true;
 	}
-	else
+
+	if (response.type == LOGIN && response.x == 0)
 	{
 		std::cout << "[클라이언트] 로그인 실패" << std::endl;
 		Sleep(1000);
 		return false;
 	}
+
+	if (response.type == LOGIN && response.x == -1)
+	{
+		std::cout << "[클라이언트] 이미 로그인 된 아이디입니다." << std::endl;
+		Sleep(2000);
+
+		if (ConnetToServer("127.0.0.1", 9000))
+		{
+			return TryLogin();
+		}
+
+		std::cout << "[클라이언트] 재연결 실패" << "\n";
+
+	}
+
+	return false;
 }

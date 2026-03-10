@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -6,11 +8,9 @@
 #include <WS2tcpip.h>
 #include <string>
 
-#include "../Game/Game.h"
-
 #pragma comment(lib, "ws2_32.lib")
 
-enum PacketType { LOGIN = 1, STONE = 2, WIN = 3, LEAVE = 4 };
+enum PacketType { LOGIN = 1, STONE = 2, WIN = 3, LEAVE = 4 , HEARTBEAT = 5};
 
 struct GamePacket 
 {
@@ -20,10 +20,16 @@ struct GamePacket
 	char pw[50];
 };
 
+struct GameInfo
+{
+	char oppID[20];
+	int win;
+	int lose;
+	int color;
+};
 
 class Player
 {
-	friend class Game;
 public:
 	Player();
 
@@ -35,7 +41,7 @@ public:
 	void WaitingGame();
 
 	bool TryLogin();
-private:
+
 	SOCKET sock;
 
 	int color;

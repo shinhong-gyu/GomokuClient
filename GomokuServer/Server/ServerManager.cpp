@@ -1,12 +1,20 @@
 #include "ServerManager.h"
 #include <iostream>
 #include <thread>
+#include <algorithm>
 
 ServerManager::ServerManager()
 {
 	WSADATA wsaData;
 
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	int a = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+	if (a)
+	{
+		std::cout << "[서버] WSAStartup 실패: " << a << "\n";
+	}
+
+	serverSocket = INVALID_SOCKET;
 }
 
 ServerManager::~ServerManager()
@@ -33,9 +41,14 @@ bool ServerManager::StartServer(int port)
 	SOCKADDR_IN serverAddr = {};
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
-	serverAddr.sin_addr.s_addr = htons(INADDR_ANY);
+	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(serverSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR)
 	{
 		return false;
 	}
@@ -47,42 +60,73 @@ bool ServerManager::StartServer(int port)
 
 void ServerManager::AcceptClients()
 {
+	std::thread monitorThread(&ServerManager::MonitorHeartbeats, this);
+
+	monitorThread.detach();
+
 	while (true)
 	{
 		sockaddr_in  clientAddr;
 		int addrLen = sizeof(clientAddr);
 
 		SOCKET clientSocket = accept(serverSocket, (SOCKADDR*)&clientAddr, &addrLen);
+		std::cout << 1 << "\n";
 
+		if (clientSocket == INVALID_SOCKET)
+		{
+			int err = WSAGetLastError();
+			std::cout << "Accept failed with error: " << err << std::endl;
+			break;
+		}
+		std::cout << 2 << "\n";
 		if (clientSocket != INVALID_SOCKET)
 		{
 			GamePacket packet;
 
+			std::cout << "Login Receiving" << "\n";
 			if (recv(clientSocket, (char*)&packet, sizeof(GamePacket), 0) > 0)
 			{
+				std::cout << 3 << "\n";
 				if (packet.type == LOGIN)
 				{
-					bool isValid = db.Login(packet.id, packet.pw);
+					std::string loginID(packet.id);
 
 					GamePacket response = {};
 					response.type = LOGIN;
 
-					if (isValid)
+					if (loginList[clientSocket] == 0)
 					{
-						std::cout << "[서버] 로그인 승인: " << packet.id << "\n";
-						response.x = 1;
-						send(clientSocket, (char*)&response, sizeof(GamePacket), 0);
+						bool isValid = db.Login(packet.id, packet.pw);
 
-						std::cout << "[서버] 새로운 유저가 접속했습니다." << "\n";
+						if (isValid)
+						{
+							std::cout << "[서버] 로그인 승인: " << packet.id << "\n";
+							response.x = 1;
 
-						connClients.push_back(std::make_pair(clientSocket, response.id));
+							std::cout << "[서버] 새로운 유저가 접속했습니다." << "\n";
+
+							/*		std::thread hbThread(&ServerManager::HeartbeatThread, this, clientSocket);
+
+									hbThread.detach();*/
+
+
+							connClients.push_back(std::make_pair(clientSocket, loginID));
+							loginList[clientSocket] = GetTickCount64();
+							onGameList[clientSocket] = true;
+						}
+						else
+						{
+							std::cout << "[서버] 로그인 거부: " << packet.id << "\n";
+							response.x = 0;
+						}
 					}
 					else
 					{
-						std::cout << "[서버] 로그인 거부: " << packet.id << "\n";
-						response.x = 0;
-						send(clientSocket, (char*)&response, sizeof(GamePacket), 0);
+						std::cout << "[서버] 이미 로그인 된 아이디: " << packet.id << "\n";
+						response.x = -1;
 					}
+
+					send(clientSocket, (char*)&response, sizeof(GamePacket), 0);
 				}
 			}
 
@@ -111,8 +155,22 @@ void ServerManager::GameRoomThread(SOCKET player1, SOCKET player2, std::string p
 	int black = 1;
 	int white = 2;
 
-	send(player1, (char*)&black, sizeof(int), 0);
-	send(player2, (char*)&white, sizeof(int), 0);
+	GameInfo p1Info = {};
+	p1Info.color = black;
+	db.GetRecord(p2ID, p1Info.win, p1Info.lose);
+
+	strncpy_s(p1Info.oppID, sizeof(p1Info.oppID), p2ID.c_str(), _TRUNCATE);
+	p1Info.oppID[sizeof(p1Info.oppID) - 1] = '\0';
+
+	GameInfo p2Info = {};
+	p2Info.color = white;
+	db.GetRecord(p1ID, p2Info.win, p2Info.lose);
+
+	strncpy_s(p2Info.oppID, sizeof(p2Info.oppID), p1ID.c_str(), _TRUNCATE);
+	p2Info.oppID[sizeof(p2Info.oppID) - 1] = '\0';
+
+	send(player1, (char*)&p1Info, sizeof(GameInfo), 0);
+	send(player2, (char*)&p2Info, sizeof(GameInfo), 0);
 
 	std::cout << "[서버 방] 새로운 게임이 시작되었습니다" << std::endl;
 
@@ -127,14 +185,24 @@ void ServerManager::GameRoomThread(SOCKET player1, SOCKET player2, std::string p
 		if (result <= 0)
 		{
 			std::cout << "[서버 방] Player 1 연결 끊김. 게임 종료" << "\n";
+
+			packet.type = PacketType::LEAVE;
+
+			send(player2, (char*)&packet, sizeof(GamePacket), 0);
+
 			break;
 		}
 
+		loginList[player1] = GetTickCount64();
+
 		send(player2, (char*)&packet, sizeof(GamePacket), 0);
 
-		if (packet.type == 1)
+		if (packet.type == PacketType::WIN)
 		{
-			std::cout << "[서버 방] Player 1 승리!" << "\n";
+			std::cout << "[서버 방] " + p1ID + " 승리" << "\n";
+
+			loginList[player1] = GetTickCount64();
+			loginList[player2] = GetTickCount64();
 
 			db.UpdateRecord(p1ID, true);
 			db.UpdateRecord(p2ID, false);
@@ -144,17 +212,27 @@ void ServerManager::GameRoomThread(SOCKET player1, SOCKET player2, std::string p
 
 		result = recv(player2, (char*)&packet, sizeof(GamePacket), 0);
 
+		loginList[player2] = GetTickCount64();
+
 		if (result <= 0)
 		{
 			std::cout << "[서버 방] Player 2 연결 끊김. 게임 종료" << "\n";
+
+			packet.type = PacketType::LEAVE;
+
+			send(player1, (char*)&packet, sizeof(GamePacket), 0);
+
 			break;
 		}
 
 		send(player1, (char*)&packet, sizeof(GamePacket), 0);
 
-		if (packet.type == 1)
+		if (packet.type == PacketType::WIN)
 		{
-			std::cout << "[서버 방] Player 2 승리!" << "\n";
+			std::cout << "[서버 방] " + p2ID + " 승리" << "\n";
+
+			loginList[player1] = GetTickCount64();
+			loginList[player2] = GetTickCount64();
 
 			db.UpdateRecord(p1ID, false);
 			db.UpdateRecord(p2ID, true);
@@ -165,7 +243,50 @@ void ServerManager::GameRoomThread(SOCKET player1, SOCKET player2, std::string p
 		Sleep(10);
 	}
 
-	std::cout << "[서버 방] 방 닫음" << std::endl;
-	closesocket(player1);
-	closesocket(player2);
+	onGameList[player1] = false;
+	onGameList[player2] = false;
+
+	std::cout << "[서버 방] 방 닫음" << "\n";
+}
+
+void ServerManager::MonitorHeartbeats()
+{
+	while (true)
+	{
+		DWORD currentTime = GetTickCount64();
+
+		for (auto it = loginList.begin(); it != loginList.end();)
+		{
+			if (!onGameList[it->first])
+			{
+				Sleep(1000);
+
+				if (currentTime > it->second && currentTime - it->second > 30000.0f)
+				{
+					std::cout << "\n[서버] 클라이언트 " << it->first << " 연결 끊김 감지" << "\n";
+
+					for (auto it2 = connClients.begin(); it2 != connClients.end();)
+					{
+						if (it2->first == it->first)
+						{
+							it2 = connClients.erase(it2);
+							break;
+						}
+
+						++it2;
+					}
+
+					onGameList.erase(onGameList.find(it->first));
+					closesocket(it->first);
+					it = loginList.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
+
+		Sleep(1000);
+	}
 }

@@ -25,6 +25,9 @@ public:
 	void Run();
 
 	bool ProcessInput();
+
+	void CloseGame();
+
 private:
 	float targetFrameRate = 60.0f;
 
@@ -45,4 +48,6 @@ private:
 	int turn = 1;
 
 	Player player;
+
+	float heartbeatTime = 5.0f;
 };

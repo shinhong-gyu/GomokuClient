@@ -16,8 +16,6 @@ Game::Game()
 		{
 			system("cls");
 
-			GamePacket packet;
-
 			player.WaitingGame();
 
 			Sleep(3000);
@@ -66,13 +64,15 @@ void Game::Run()
 
 			float deltaTime = static_cast<float>(currentTime - previousTime) / static_cast<float>(frequency.QuadPart);
 
+			targetOneFrameTime = 1.0f / targetFrameRate;
+
 			if (deltaTime >= targetOneFrameTime)
 			{
 				if (ProcessInput())
 				{
 					if (Board.PutStone(mousePosition.x, mousePosition.y, player.color))
 					{
-						system("cls");
+						UI.Gotoxy(0, 0);
 
 						Board.DrawBoard();
 
@@ -81,40 +81,38 @@ void Game::Run()
 						if (Board.CheckWin(mousePosition.x / 2, mousePosition.y, player.color))
 						{
 							system("cls");
-							std::cout << "You win" << std::endl;
+							std::cout << "\tYou Win" << std::endl;
 
 							packet.type = PacketType::WIN;
 
-							packet.x = mousePosition.x / 2;
+							packet.x = mousePosition.x;
 							packet.y = mousePosition.y;
 
-							strncpy(packet.id, player.id.c_str(), sizeof(packet.id) - 1);
+							strncpy_s(packet.id, sizeof(packet.id), player.id.c_str(), _TRUNCATE);
 							packet.id[sizeof(packet.id) - 1] = '\0';
-							strncpy(packet.pw, player.pw.c_str(), sizeof(packet.pw) - 1);
-							packet.pw[sizeof(packet.pw) - 1] = '\0';
+							strncpy_s(packet.pw, sizeof(packet.pw), player.pw.c_str(), _TRUNCATE);
+							packet.pw[sizeof(packet.id) - 1] = '\0';
 
 							player.SendPacket(packet);
+
+							CloseGame();
 						}
 						else
 						{
 							packet.type = PacketType::STONE;
 
-							packet.x = mousePosition.x / 2;
+							packet.x = mousePosition.x;
 							packet.y = mousePosition.y;
 
-							strncpy(packet.id, player.id.c_str(), sizeof(packet.id) - 1);
+							strncpy_s(packet.id, sizeof(packet.id), player.id.c_str(), _TRUNCATE);
 							packet.id[sizeof(packet.id) - 1] = '\0';
-							strncpy(packet.pw, player.pw.c_str(), sizeof(packet.pw) - 1);
-							packet.pw[sizeof(packet.pw) - 1] = '\0';
+							strncpy_s(packet.pw, sizeof(packet.pw), player.pw.c_str(), _TRUNCATE);
+							packet.pw[sizeof(packet.id) - 1] = '\0';
 
 							player.SendPacket(packet);
 
 							player.bIsMyTurn = false;
 						}
-					}
-					else
-					{
-						// 둘 수 없는 곳일 때 처리
 					}
 				}
 			}
@@ -125,14 +123,49 @@ void Game::Run()
 
 			player.RecvPacket(packet);
 
-			if (packet.type == PacketType::STONE)
+			switch (packet.type)
 			{
+			case PacketType::WIN:
 				UI.Gotoxy(0, 0);
 
 				Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
 
 				Board.DrawBoard();
+
+				Sleep(3000);
+
+				system("cls");
+
+				std::cout << "\tYou Lose" << std::endl;
+
+				CloseGame();
+
+				break;
+
+			case PacketType::LEAVE:
+				CloseGame();
+
+				system("cls");
+
+				std::cout << "상대가 나갔습니다. 게임 종료" << std::endl;
+
+				break;
+
+			case PacketType::STONE:
+				UI.Gotoxy(0, 0);
+
+				Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
+
+				Board.DrawBoard();
+
+				player.bIsMyTurn = true;
+				break;
+
+			default:
+				break;
 			}
+
+
 		}
 	}
 }
@@ -140,19 +173,17 @@ void Game::Run()
 bool Game::ProcessInput()
 {
 	HANDLE inputHandle = GetStdHandle(STD_INPUT_HANDLE);
+	FlushConsoleInputBuffer(inputHandle);
+
 	static int flag = ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_EXTENDED_FLAGS;
 	SetConsoleMode(inputHandle, flag);
+
 
 	INPUT_RECORD record;
 	DWORD events;
 
 	if (PeekConsoleInput(inputHandle, &record, 1, &events) && events > 0)
 	{
-		if (record.EventType == WINDOW_BUFFER_SIZE_EVENT)
-		{
-			FlushConsoleInputBuffer(inputHandle);
-		}
-
 		if (ReadConsoleInput(inputHandle, &record, 1, &events))
 		{
 			switch (record.EventType)
@@ -192,6 +223,7 @@ bool Game::ProcessInput()
 				}
 
 			}
+
 			break;
 
 			}
@@ -199,4 +231,13 @@ bool Game::ProcessInput()
 	}
 
 	return false;
+}
+
+void Game::CloseGame()
+{
+	Board.InitGameBoard();
+
+	player.bIsMyTurn = false;
+
+	Sleep(100000000);
 }

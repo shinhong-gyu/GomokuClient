@@ -65,3 +65,45 @@ bool DBManager::UpdateRecord(const std::string& id, bool isWin)
 
 	return false;
 }
+
+bool DBManager::GetRecord(const std::string& id, int& win, int& lose)
+{
+	std::string winQurey = "select win from users where id = '" + id + "'";
+	std::string loseQuery = "select lose from users where id = '" + id + "'";
+
+	if (mysql_query(conn, winQurey.c_str()) == 0)
+	{
+		MYSQL_RES* result = mysql_store_result(conn);
+
+		if (result != nullptr)
+		{
+			MYSQL_ROW row = mysql_fetch_row(result);
+
+			if (row != nullptr && row[0] != nullptr)
+			{
+				win = std::stoi(row[0]);
+			}
+
+			mysql_free_result(result);
+		}
+	}
+	if (mysql_query(conn, loseQuery.c_str()) == 0)
+	{
+		MYSQL_RES* result = mysql_store_result(conn);
+
+		if (result != nullptr)
+		{
+			MYSQL_ROW row = mysql_fetch_row(result);
+
+			if (row != nullptr && row[0] != nullptr)
+			{
+				lose = std::stoi(row[0]);
+			}
+
+			mysql_free_result(result);
+		}
+	}
+
+
+	return true;
+}
