@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 Game::Game()
 {
@@ -9,7 +11,7 @@ Game::Game()
 	{
 		std::cout << "[클라이언트] 서버 연결 성공";
 
-		Sleep(3000);
+		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 		system("cls");
 
 		if (player.TryLogin())
@@ -18,7 +20,7 @@ Game::Game()
 
 			player.WaitingGame();
 
-			Sleep(3000);
+			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 			Board.DrawBoard();
 		}
@@ -81,6 +83,7 @@ void Game::Run()
 						if (Board.CheckWin(mousePosition.x / 2, mousePosition.y, player.color))
 						{
 							system("cls");
+
 							std::cout << "\tYou Win" << std::endl;
 
 							packet.type = PacketType::WIN;
@@ -93,7 +96,16 @@ void Game::Run()
 							strncpy_s(packet.pw, sizeof(packet.pw), player.pw.c_str(), _TRUNCATE);
 							packet.pw[sizeof(packet.id) - 1] = '\0';
 
-							player.SendPacket(packet);
+							int result = player.SendPacket(packet);
+
+							if (result == SOCKET_ERROR)
+							{
+								OpponentLeave();
+
+								std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+								
+								break;
+							}
 
 							CloseGame();
 						}
@@ -109,7 +121,8 @@ void Game::Run()
 							strncpy_s(packet.pw, sizeof(packet.pw), player.pw.c_str(), _TRUNCATE);
 							packet.pw[sizeof(packet.id) - 1] = '\0';
 
-							player.SendPacket(packet);
+							int result = player.SendPacket(packet);
+
 
 							player.bIsMyTurn = false;
 						}
@@ -123,6 +136,8 @@ void Game::Run()
 
 			player.RecvPacket(packet);
 
+			std::cout << "패킷 수신: type=" << packet.type << ", x=" << packet.x << ", y=" << packet.y << std::endl;
+
 			switch (packet.type)
 			{
 			case PacketType::WIN:
@@ -132,7 +147,7 @@ void Game::Run()
 
 				Board.DrawBoard();
 
-				Sleep(3000);
+				std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 				system("cls");
 
@@ -143,11 +158,7 @@ void Game::Run()
 				break;
 
 			case PacketType::LEAVE:
-				CloseGame();
-
-				system("cls");
-
-				std::cout << "상대가 나갔습니다. 게임 종료" << std::endl;
+				OpponentLeave();
 
 				break;
 
@@ -238,6 +249,14 @@ void Game::CloseGame()
 	Board.InitGameBoard();
 
 	player.bIsMyTurn = false;
-
-	Sleep(100000000);
 }
+
+void Game::OpponentLeave()
+{
+	CloseGame();
+
+	system("cls");
+
+	std::cout << "[클라이언트] 상대와 연결이 끊어졌습니다. 게임 종료" << std::endl;
+}
+ 

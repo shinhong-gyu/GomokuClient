@@ -28,6 +28,8 @@ public:
 
 	void CloseGame();
 
+	void OpponentLeave();
+
 private:
 	float targetFrameRate = 60.0f;
 

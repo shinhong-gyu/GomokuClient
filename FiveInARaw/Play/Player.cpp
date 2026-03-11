@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include <thread>
+#include <chrono>
 
 Player::Player()
 {
@@ -15,7 +16,7 @@ bool Player::ConnetToServer(const char* ip, int port)
 {
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	std::cout << result << "\n";
+
 	if (result)
 	{
 		std::cout << "[클라이언트] WSAStartup 실패: " << result << "\n";
@@ -37,9 +38,9 @@ bool Player::ConnetToServer(const char* ip, int port)
 	return false;
 }
 
-void Player::SendPacket(GamePacket packet)
+int Player::SendPacket(GamePacket packet)
 {
-	send(sock, (char*)&packet, sizeof(GamePacket), 0);
+	return send(sock, (char*)&packet, sizeof(GamePacket), 0);
 }
 
 void Player::RecvPacket(GamePacket& packet)
@@ -74,7 +75,7 @@ void Player::WaitingGame()
 	std::cout << "[클라이언트] 상대 ID : " << std::string(infoPacket.oppID) << "\n";
 	std::cout << "[클라이언트] 상대 전적 : " << infoPacket.win << "승 " << infoPacket.lose << "패" << "\n";
 
-	Sleep(3000);
+	std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 	system("cls");
 }
@@ -109,21 +110,25 @@ bool Player::TryLogin()
 	{
 		std::cout << "[클라이언트] 로그인 성공!" << std::endl;
 
-		Sleep(1000);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
 		return true;
 	}
 
 	if (response.type == LOGIN && response.x == 0)
 	{
 		std::cout << "[클라이언트] 로그인 실패" << std::endl;
-		Sleep(1000);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
 		return false;
 	}
 
 	if (response.type == LOGIN && response.x == -1)
 	{
 		std::cout << "[클라이언트] 이미 로그인 된 아이디입니다." << std::endl;
-		Sleep(2000);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
 		if (ConnetToServer("127.0.0.1", 9000))
 		{

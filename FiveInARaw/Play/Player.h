@@ -35,7 +35,7 @@ public:
 
 	bool ConnetToServer(const char* ip, int port);
 
-	void SendPacket(GamePacket packet);
+	int SendPacket(GamePacket packet);
 	void RecvPacket(GamePacket& packet);
 
 	void WaitingGame();
