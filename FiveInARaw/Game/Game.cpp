@@ -20,8 +20,6 @@ Game::Game()
 
 			player.WaitingGame();
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-
 			Board.DrawBoard();
 		}
 		else
@@ -59,16 +57,16 @@ void Game::Run()
 			break;
 		}
 
-		if (player.bIsMyTurn)
+		QueryPerformanceCounter(&time);
+		currentTime = time.QuadPart;
+
+		float deltaTime = static_cast<float>(currentTime - previousTime) / static_cast<float>(frequency.QuadPart);
+
+		targetOneFrameTime = 1.0f / targetFrameRate;
+
+		if (deltaTime >= targetOneFrameTime)
 		{
-			QueryPerformanceCounter(&time);
-			currentTime = time.QuadPart;
-
-			float deltaTime = static_cast<float>(currentTime - previousTime) / static_cast<float>(frequency.QuadPart);
-
-			targetOneFrameTime = 1.0f / targetFrameRate;
-
-			if (deltaTime >= targetOneFrameTime)
+			if (player.bIsMyTurn)
 			{
 				if (ProcessInput())
 				{
@@ -82,9 +80,7 @@ void Game::Run()
 
 						if (Board.CheckWin(mousePosition.x / 2, mousePosition.y, player.color))
 						{
-							system("cls");
-
-							std::cout << "\tYou Win" << std::endl;
+							std::cout << "\t\tYou Win" << std::endl;
 
 							packet.type = PacketType::WIN;
 
@@ -101,13 +97,12 @@ void Game::Run()
 							if (result == SOCKET_ERROR)
 							{
 								OpponentLeave();
-
-								std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-								
 								break;
 							}
 
-							CloseGame();
+							std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+							ShowOption();
 						}
 						else
 						{
@@ -123,61 +118,55 @@ void Game::Run()
 
 							int result = player.SendPacket(packet);
 
-
 							player.bIsMyTurn = false;
 						}
 					}
 				}
 			}
-		}
-		else
-		{
-			GamePacket packet;
-
-			player.RecvPacket(packet);
-
-			std::cout << "패킷 수신: type=" << packet.type << ", x=" << packet.x << ", y=" << packet.y << std::endl;
-
-			switch (packet.type)
+			else
 			{
-			case PacketType::WIN:
-				UI.Gotoxy(0, 0);
+				GamePacket packet;
 
-				Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
+				player.RecvPacket(packet);
 
-				Board.DrawBoard();
+				switch (packet.type)
+				{
+				case PacketType::WIN:
+					UI.Gotoxy(0, 0);
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+					Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
 
-				system("cls");
+					Board.DrawBoard();
 
-				std::cout << "\tYou Lose" << std::endl;
+					std::cout << "\t\tYou Lose" << std::endl;
 
-				CloseGame();
+					std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-				break;
+					ShowOption();
 
-			case PacketType::LEAVE:
-				OpponentLeave();
+					break;
 
-				break;
+				case PacketType::LEAVE:
+					OpponentLeave();
 
-			case PacketType::STONE:
-				UI.Gotoxy(0, 0);
+					break;
 
-				Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
+				case PacketType::STONE:
+					UI.Gotoxy(0, 0);
 
-				Board.DrawBoard();
+					Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
 
-				player.bIsMyTurn = true;
-				break;
+					Board.DrawBoard();
 
-			default:
-				break;
+					player.bIsMyTurn = true;
+					break;
+
+				default:
+					break;
+				}
 			}
-
-
 		}
+
 	}
 }
 
@@ -210,33 +199,29 @@ bool Game::ProcessInput()
 				{
 					keyState[record.Event.KeyEvent.wVirtualKeyCode].isKeyDown = false;
 				}
+				break;
 			}
-			break;
 
 			case MOUSE_EVENT:
 			{
 				MOUSE_EVENT_RECORD mouse = record.Event.MouseEvent;
-				if (mouse.dwEventFlags == 0)
+
+				mousePosition.x = record.Event.MouseEvent.dwMousePosition.X;
+				mousePosition.y = record.Event.MouseEvent.dwMousePosition.Y;
+
+				bool isLeftDown = (mouse.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) != 0;
+
+				if (isLeftDown)
 				{
-					mousePosition.x = record.Event.MouseEvent.dwMousePosition.X;
-					mousePosition.y = record.Event.MouseEvent.dwMousePosition.Y;
+					keyState[VK_LBUTTON].isKeyDown = isLeftDown;
 
-					keyState[VK_LBUTTON].isKeyDown
-						= (record.Event.MouseEvent.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) != 0;
+					//keyState[VK_RBUTTON].isKeyDown = (record.Event.MouseEvent.dwButtonState & RIGHTMOST_BUTTON_PRESSED) != 0;
 
-					keyState[VK_RBUTTON].isKeyDown
-						= (record.Event.MouseEvent.dwButtonState & RIGHTMOST_BUTTON_PRESSED) != 0;
-
-					if (keyState[VK_LBUTTON].isKeyDown)
-					{
-						return true;
-					}
+					return true;
 				}
 
+				break;
 			}
-
-			break;
-
 			}
 		}
 	}
@@ -253,10 +238,53 @@ void Game::CloseGame()
 
 void Game::OpponentLeave()
 {
-	CloseGame();
-
 	system("cls");
 
 	std::cout << "[클라이언트] 상대와 연결이 끊어졌습니다. 게임 종료" << std::endl;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+	ShowOption();
 }
- 
+
+void Game::ShowOption()
+{
+	system("cls");
+
+	std::cout << "\t[R] 상대찾기\t[Q] 종료하기" << "\n";
+
+	while (true)
+	{
+		ProcessInput();
+
+		if (keyState['R'].isKeyDown == true)
+		{
+			CloseGame();
+
+			GamePacket packet = {};
+			packet.type = PacketType::MATCHING;
+
+			int result = player.SendPacket(packet);
+
+			keyState['R'].isKeyDown = false;
+
+			if (result != SOCKET_ERROR)
+			{
+				player.WaitingGame();
+
+				Board.DrawBoard();
+			}
+
+
+			break;
+		}
+
+		if (keyState['Q'].isKeyDown == true)
+		{
+			CloseGame();
+			quit = true;
+			break;
+		}
+	}
+
+}

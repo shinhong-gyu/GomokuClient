@@ -46,12 +46,14 @@ int Player::SendPacket(GamePacket packet)
 void Player::RecvPacket(GamePacket& packet)
 {
 	recv(sock, (char*)&packet, sizeof(GamePacket), 0);
-}	
+}
 
 
 void Player::WaitingGame()
 {
 	GameInfo infoPacket = {};
+
+	system("cls");
 
 	std::cout << "[클라이언트] 상대 찾는중 ..." << "\n";
 
@@ -82,12 +84,13 @@ void Player::WaitingGame()
 
 bool Player::TryLogin()
 {
+	system("cls");
+
 	std::cout << "[로그인] ID : ";
 	std::cin >> id;
 
 	std::cout << "[로그인] PW : ";
 	std::cin >> pw;
-
 
 	GamePacket loginPacket = {};
 
@@ -108,36 +111,87 @@ bool Player::TryLogin()
 
 	if (response.type == LOGIN && response.x == 1)
 	{
-		std::cout << "[클라이언트] 로그인 성공!" << std::endl;
+		std::cout << "[클라이언트] 로그인 성공!" << "\n";
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
 		return true;
 	}
 
-	if (response.type == LOGIN && response.x == 0)
+	std::string str = response.x >= 0 ? id + "는 존재하지 않는 아이디입니다." : (response.x == -1) ? "이미 로그인 된 아이디입니다." : "비밀번호가 일치하지 않습니다";
+
+	std::cout << "[클라이언트] " << str << "\n";
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+	if (ConnetToServer("127.0.0.1", 9000))
 	{
-		std::cout << "[클라이언트] 로그인 실패" << std::endl;
+		if (response.x == 0)
+		{
+			return TrySignIn(id, pw);
+		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-		return false;
+		return TryLogin();
 	}
 
-	if (response.type == LOGIN && response.x == -1)
+	std::cout << "[클라이언트] 재연결 실패" << "\n";
+
+	return false;
+}
+
+bool Player::TrySignIn(std::string id, std::string pw)
+{
+	system("cls");
+
+	std::cout << "[회원가입] ID : " << id << "\n";
+	std::cout << "[회원가입] PW : " << pw << "\n";
+
+	std::cout << "[회원가입] 이대로 가입하시겠습니까?" << "\n";
+	std::cout << "\t[Y] 예\t[N] 아니오" << "\n";
+
+	char yesORno;
+
+	std::cin >> yesORno;
+
+	if (yesORno == 'Y' || yesORno == 'y')
 	{
-		std::cout << "[클라이언트] 이미 로그인 된 아이디입니다." << std::endl;
+		GamePacket packet = {};
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		strncpy_s(packet.id, sizeof(packet.id), id.c_str(), _TRUNCATE);
+		packet.id[sizeof(packet.id) - 1] = '\0';
+		strncpy_s(packet.pw, sizeof(packet.pw), pw.c_str(), _TRUNCATE);
+		packet.pw[sizeof(packet.id) - 1] = '\0';
 
-		if (ConnetToServer("127.0.0.1", 9000))
+		packet.type = PacketType::SIGNIN;
+
+		send(sock, (char*)&packet, sizeof(GamePacket), 0);
+
+		GamePacket response = {};
+
+		recv(sock, (char*)&response, sizeof(GamePacket), 0);
+
+		if (response.x == 1)
 		{
+			std::cout << "[클라이언트] 회원가입 성공!" << "\n";
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+			ConnetToServer("127.0.0.1", 9000);
+
 			return TryLogin();
 		}
 
-		std::cout << "[클라이언트] 재연결 실패" << "\n";
+	}
+	else if (yesORno == 'N' || yesORno == 'n')
+	{
+		std::cout << "[회원가입] ID 입력 : ";
+		std::cin >> id;
 
+
+		std::cout << "[회원가입] PW 입력 : ";
+		std::cin >> pw;
+
+		return TrySignIn(id, pw);
 	}
 
-	return false;
+	return true;
 }

@@ -10,7 +10,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-enum PacketType { LOGIN = 1, STONE = 2, WIN = 3, LEAVE = 4 , HEARTBEAT = 5};
+enum PacketType { LOGIN = 1, STONE = 2, WIN = 3, LEAVE = 4, HEARTBEAT = 5, MATCHING = 6, SIGNIN = 7 };
 
 struct GamePacket 
 {
@@ -41,6 +41,7 @@ public:
 	void WaitingGame();
 
 	bool TryLogin();
+	bool TrySignIn(std::string id,std::string pw);
 
 	SOCKET sock;
 
