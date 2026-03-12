@@ -7,12 +7,13 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <string>
+#include <queue>
 
 #pragma comment(lib, "ws2_32.lib")
 
 enum PacketType { LOGIN = 1, STONE = 2, WIN = 3, LEAVE = 4, HEARTBEAT = 5, MATCHING = 6, SIGNIN = 7 };
 
-struct GamePacket 
+struct GamePacket
 {
 	int type;
 	int x, y;
@@ -31,7 +32,7 @@ struct GameInfo
 class Player
 {
 public:
-	Player(); 
+	Player();
 	~Player();
 
 	bool ConnetToServer(const char* ip, int port);
@@ -42,7 +43,11 @@ public:
 	void WaitingGame();
 
 	bool TryLogin();
-	bool TrySignIn(std::string id,std::string pw);
+	bool TrySignIn(std::string id, std::string pw);
+
+	void PacketReceiver();
+
+	void GameEnd();
 
 	SOCKET sock;
 
@@ -52,4 +57,10 @@ public:
 	std::string pw;
 
 	bool bIsMyTurn = false;
+
+private:
+	bool bIsGameEnd = false;
+	std::queue<GamePacket> recvQueue;
+
+	bool bIsReceiverRunning = false;
 };

@@ -5,6 +5,9 @@
 
 #include <thread>
 #include <chrono>
+#include <mutex>
+
+std::mutex mtx;
 
 Player::Player()
 {
@@ -33,7 +36,15 @@ bool Player::ConnetToServer(const char* ip, int port)
 		return false;
 	}
 
+	if (sock != INVALID_SOCKET)
+	{
+		closesocket(sock);
+		sock = INVALID_SOCKET;
+	}
+
 	sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	std::cout << "[클라이언트] 서버 소켓 : " << sock << "\n";
 
 	sockaddr_in serverAddr = {};
 	serverAddr.sin_family = AF_INET;
@@ -55,25 +66,57 @@ int Player::SendPacket(GamePacket packet)
 
 void Player::RecvPacket(GamePacket& packet)
 {
-	recv(sock, (char*)&packet, sizeof(GamePacket), 0);
+	while (true)
+	{
+		if (recvQueue.size() != 0)
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+
+			packet = recvQueue.front();
+
+			recvQueue.pop();
+
+			break;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 }
 
 
 void Player::WaitingGame()
 {
-	GameInfo infoPacket = {};
+	bIsGameEnd = false;
+
+	if (!bIsReceiverRunning)
+	{
+		bIsReceiverRunning = true;
+		std::thread receiverThread(&Player::PacketReceiver, this);
+		receiverThread.detach();
+	}
 
 	system("cls");
 
 	std::cout << "[클라이언트] 상대 찾는중 ..." << "\n";
 
-	recv(sock, (char*)&infoPacket, sizeof(GameInfo), 0);
+	GamePacket packet = {};
+
+	RecvPacket(packet);
+
+	while (packet.type == PacketType::LEAVE)
+	{
+		RecvPacket(packet);
+	}
+
+	GameInfo* infoPacket = (GameInfo*)&packet;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	system("cls");
 
-	color = infoPacket.color;
+	color = infoPacket->color;
 
-	bIsMyTurn = (infoPacket.color == 1);
+	bIsMyTurn = (infoPacket->color == 1);
 
 	if (bIsMyTurn)
 	{
@@ -84,10 +127,10 @@ void Player::WaitingGame()
 		std::cout << "[클라이언트] 백돌(후공)" << "\n";
 	}
 
-	std::cout << "[클라이언트] 상대 ID : " << std::string(infoPacket.oppID) << "\n";
-	std::cout << "[클라이언트] 상대 전적 : " << infoPacket.win << "승 " << infoPacket.lose << "패" << "\n";
+	std::cout << "[클라이언트] 상대 ID : " << std::string(infoPacket->oppID) << "\n";
+	std::cout << "[클라이언트] 상대 전적 : " << infoPacket->win << "승 " << infoPacket->lose << "패" << "\n";
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
 	system("cls");
 }
@@ -117,7 +160,7 @@ bool Player::TryLogin()
 
 	std::cout << "[로그인] 로그인 시도 중... " << "\n";
 
-	RecvPacket(response);
+	recv(sock, (char*)&response, sizeof(GamePacket), 0);
 
 	if (response.type == LOGIN && response.x == 1)
 	{
@@ -174,11 +217,11 @@ bool Player::TrySignIn(std::string id, std::string pw)
 
 		packet.type = PacketType::SIGNIN;
 
-		send(sock, (char*)&packet, sizeof(GamePacket), 0);
+		SendPacket(packet);
 
 		GamePacket response = {};
 
-		RecvPacket(response);
+		recv(sock, (char*)&response, sizeof(GamePacket), 0);
 
 		if (response.x == 1)
 		{
@@ -208,4 +251,43 @@ bool Player::TrySignIn(std::string id, std::string pw)
 	}
 
 	return false;
+}
+
+void Player::PacketReceiver()
+{
+	GamePacket packet;
+
+	while (true)
+	{
+		int result = 0;
+
+		result = recv(sock, (char*)&packet, sizeof(GamePacket), 0);
+
+		std::cout << "[클라이언트] 패킷 수신 결과: " << result << "\n";
+
+		if (result <= 0)
+		{
+			bIsReceiverRunning = false;
+			break;
+		}
+
+		if (result != SOCKET_ERROR)
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+
+			recvQueue.push(packet);
+		}
+
+		if (bIsGameEnd)
+		{
+			bIsReceiverRunning = false;
+			break;
+		}
+	}
+}
+
+void Player::GameEnd()
+{
+	bIsReceiverRunning = false;
+	bIsGameEnd = true;
 }

@@ -100,6 +100,8 @@ void Game::Run()
 								break;
 							}
 
+							player.GameEnd();
+
 							std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 							ShowOption();
@@ -132,6 +134,7 @@ void Game::Run()
 				switch (packet.type)
 				{
 				case PacketType::WIN:
+
 					UI.Gotoxy(0, 0);
 
 					Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
@@ -140,6 +143,8 @@ void Game::Run()
 
 					std::cout << "\t\tYou Lose" << std::endl;
 
+					player.GameEnd();
+
 					std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
 					ShowOption();
@@ -147,11 +152,13 @@ void Game::Run()
 					break;
 
 				case PacketType::LEAVE:
+
 					OpponentLeave();
 
 					break;
 
 				case PacketType::STONE:
+
 					UI.Gotoxy(0, 0);
 
 					Board.PutStone(packet.x, packet.y, (player.color == 1) ? 2 : 1);
@@ -214,8 +221,6 @@ bool Game::ProcessInput()
 				{
 					keyState[VK_LBUTTON].isKeyDown = isLeftDown;
 
-					//keyState[VK_RBUTTON].isKeyDown = (record.Event.MouseEvent.dwButtonState & RIGHTMOST_BUTTON_PRESSED) != 0;
-
 					return true;
 				}
 
@@ -240,6 +245,8 @@ void Game::OpponentLeave()
 	system("cls");
 
 	std::cout << "[클라이언트] 상대와 연결이 끊어졌습니다. 게임 종료" << std::endl;
+
+	player.GameEnd();
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
