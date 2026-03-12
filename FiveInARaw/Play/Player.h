@@ -31,7 +31,8 @@ struct GameInfo
 class Player
 {
 public:
-	Player();
+	Player(); 
+	~Player();
 
 	bool ConnetToServer(const char* ip, int port);
 

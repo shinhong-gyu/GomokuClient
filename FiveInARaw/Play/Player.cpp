@@ -12,6 +12,16 @@ Player::Player()
 	sock = INVALID_SOCKET;
 }
 
+Player::~Player()
+{
+	if (sock != INVALID_SOCKET)
+	{
+		closesocket(sock);
+	}
+
+	WSACleanup();
+}
+
 bool Player::ConnetToServer(const char* ip, int port)
 {
 	WSADATA wsaData;
@@ -147,7 +157,7 @@ bool Player::TrySignIn(std::string id, std::string pw)
 	std::cout << "[회원가입] PW : " << pw << "\n";
 
 	std::cout << "[회원가입] 이대로 가입하시겠습니까?" << "\n";
-	std::cout << "\t[Y] 예\t[N] 아니오" << "\n";
+	std::cout << "[Y] 예\t[N] 아니오\t[R] 다른 아이디로 로그인" << "\n";
 
 	char yesORno;
 
@@ -168,7 +178,7 @@ bool Player::TrySignIn(std::string id, std::string pw)
 
 		GamePacket response = {};
 
-		recv(sock, (char*)&response, sizeof(GamePacket), 0);
+		RecvPacket(response);
 
 		if (response.x == 1)
 		{
@@ -192,6 +202,10 @@ bool Player::TrySignIn(std::string id, std::string pw)
 
 		return TrySignIn(id, pw);
 	}
+	else if (yesORno == 'R' || yesORno == 'r')
+	{
+		return TryLogin();
+	}
 
-	return true;
+	return false;
 }

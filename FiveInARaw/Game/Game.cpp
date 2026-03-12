@@ -166,7 +166,6 @@ void Game::Run()
 				}
 			}
 		}
-
 	}
 }
 
@@ -274,7 +273,40 @@ void Game::ShowOption()
 
 				Board.DrawBoard();
 			}
+			else
+			{
+				system("cls");
 
+				std::cout << "[클라이언트] 입력이 없어 서버와 연결이 끊겼습니다.\n[클라이언트] 다시 로그인 하세요" << "\n";
+
+				if (player.ConnetToServer("127.0.0.1", 9000))
+				{
+					std::cout << "[클라이언트] 서버 재연결 성공" << "\n";
+
+					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+					system("cls");
+
+					if (player.TryLogin())
+					{
+						system("cls");
+
+						player.WaitingGame();
+
+						Board.DrawBoard();
+					}
+					else
+					{
+						system("pause");
+					}
+				}
+				else
+				{
+					std::cout << "[클라이언트] 서버 연결 실패" << "\n";
+
+					quit = true;
+				}
+			}
 
 			break;
 		}
@@ -288,3 +320,5 @@ void Game::ShowOption()
 	}
 
 }
+
+

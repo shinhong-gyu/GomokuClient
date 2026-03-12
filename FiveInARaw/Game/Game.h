@@ -31,6 +31,7 @@ public:
 	void OpponentLeave();
 
 	void ShowOption();
+
 private:
 	float targetFrameRate = 60.0f;
 
