@@ -25,7 +25,7 @@ Player::~Player()
 	WSACleanup();
 }
 
-bool Player::ConnetToServer(const char* ip, int port)
+bool Player::ConnetToServer()
 {
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -49,7 +49,7 @@ bool Player::ConnetToServer(const char* ip, int port)
 	sockaddr_in serverAddr = {};
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
-	inet_pton(AF_INET, ip, &serverAddr.sin_addr);
+	inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr);
 
 	if (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != SOCKET_ERROR)
 	{
@@ -177,7 +177,7 @@ bool Player::TryLogin()
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-	if (ConnetToServer("127.0.0.1", 9000))
+	if (ConnetToServer())
 	{
 		if (response.x == 0)
 		{
@@ -228,7 +228,7 @@ bool Player::TrySignIn(std::string id, std::string pw)
 			std::cout << "[클라이언트] 회원가입 성공!" << "\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-			ConnetToServer("127.0.0.1", 9000);
+			ConnetToServer();
 
 			return TryLogin();
 		}

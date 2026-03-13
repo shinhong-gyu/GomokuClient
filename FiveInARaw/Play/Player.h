@@ -35,7 +35,7 @@ public:
 	Player();
 	~Player();
 
-	bool ConnetToServer(const char* ip, int port);
+	bool ConnetToServer();
 
 	int SendPacket(GamePacket packet);
 	void RecvPacket(GamePacket& packet);
@@ -63,4 +63,7 @@ private:
 	std::queue<GamePacket> recvQueue;
 
 	bool bIsReceiverRunning = false;
+
+	std::string ip = "127.0.0.1";
+	int port = 9000;
 };

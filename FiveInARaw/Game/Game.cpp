@@ -7,7 +7,7 @@
 
 Game::Game()
 {
-	if (player.ConnetToServer("127.0.0.1", 9000))
+	if (player.ConnetToServer())
 	{
 		std::cout << "[클라이언트] 서버 연결 성공";
 
@@ -286,7 +286,7 @@ void Game::ShowOption()
 
 				std::cout << "[클라이언트] 입력이 없어 서버와 연결이 끊겼습니다.\n[클라이언트] 다시 로그인 하세요" << "\n";
 
-				if (player.ConnetToServer("127.0.0.1", 9000))
+				if (player.ConnetToServer())
 				{
 					std::cout << "[클라이언트] 서버 재연결 성공" << "\n";
 
