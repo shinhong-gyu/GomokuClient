@@ -263,8 +263,6 @@ void Player::PacketReceiver()
 
 		result = recv(sock, (char*)&packet, sizeof(GamePacket), 0);
 
-		std::cout << "[클라이언트] 패킷 수신 결과: " << result << "\n";
-
 		if (result <= 0)
 		{
 			bIsReceiverRunning = false;
